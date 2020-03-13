@@ -134,7 +134,9 @@ MultirotorRpcLibServer::~MultirotorRpcLibServer()
 
 
 }} //namespace
-
+// TODO: complete hack, turn check into an empty macro again for the rest of UE4
+#undef check
+#define check(expr)
 
 #endif
 #endif

@@ -5,20 +5,6 @@ DOCKER_IMAGE_NAME=$1
 UNREAL_BINARY_PATH=$(dirname $(readlink -f $2))
 UNREAL_BINARY_SHELL_ABSPATH=$(readlink -f $2)
 
-# this block is for running X apps in docker
-XAUTH=/tmp/.docker.xauth
-if [ ! -f $XAUTH ]
-then
-    xauth_list=$(xauth nlist :0 | sed -e 's/^..../ffff/')
-    if [ ! -z "$xauth_list" ]
-    then
-        echo $xauth_list | xauth -f $XAUTH nmerge -
-    else
-        touch $XAUTH
-    fi
-    chmod a+r $XAUTH
-fi
-
 # this are the first (maximum) four arguments which the user specifies:
 # ex: ./run_airsim_image.sh /PATH/TO/UnrealBinary/UnrealBinary.sh -windowed -ResX=1080 -ResY=720
 # we save them in a variable right now:  
@@ -46,18 +32,17 @@ done
 # now, let's mount the user directory which points to the unreal binary (UNREAL_BINARY_PATH)
 # set the environment varible SDL_VIDEODRIVER to SDL_VIDEODRIVER_VALUE
 # and tell the docker container to execute UNREAL_BINARY_COMMAND
-nvidia-docker run -it \
+docker run -it \
+    --rm \
+    --gpus all \
     -v $(pwd)/settings.json:/home/airsim_user/Documents/AirSim/settings.json \
     -v $UNREAL_BINARY_PATH:$UNREAL_BINARY_PATH \
     -e SDL_VIDEODRIVER=$SDL_VIDEODRIVER_VALUE \
     -e SDL_HINT_CUDA_DEVICE='0' \
     --net=host \
-    --env="DISPLAY=$DISPLAY" \
+    --env="DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    -env="XAUTHORITY=$XAUTH" \
-    --volume="$XAUTH:$XAUTH" \
-    --runtime=nvidia \
-    --rm \
+    -v /run/user/$UID/pulse:/run/user/1000/pulse \
     $DOCKER_IMAGE_NAME \
     /bin/bash -c "$UNREAL_BINARY_COMMAND"
